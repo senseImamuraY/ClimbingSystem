@@ -13,3 +13,4 @@ AClimbingSystemGameMode::AClimbingSystemGameMode()
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
 }
+
