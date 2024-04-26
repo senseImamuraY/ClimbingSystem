@@ -11,6 +11,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+
 #include "DebugHelper.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -29,7 +30,7 @@ AClimbingSystemCharacter::AClimbingSystemCharacter(const FObjectInitializer& Obj
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	CustomMovementComponent = Cast<UCustomMovementComponent>(GetCharacterMovement());
+	//CustomMovementComponent = Cast<UCustomMovementComponent>(GetCharacterMovement());
 
 	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
@@ -73,7 +74,7 @@ void AClimbingSystemCharacter::BeginPlay()
 		}
 	}
 
-
+	CustomMovementComponent = Cast<UCustomMovementComponent>(GetCharacterMovement());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -143,7 +144,7 @@ void AClimbingSystemCharacter::OnClimbActionStarted(const FInputActionValue& Val
 {
 	if (!CustomMovementComponent) return;
 
-	if (CustomMovementComponent->IsClimbing())
+	if (!CustomMovementComponent->IsClimbing())
 	{
 		CustomMovementComponent->ToggleClimbing(true);
 	}
