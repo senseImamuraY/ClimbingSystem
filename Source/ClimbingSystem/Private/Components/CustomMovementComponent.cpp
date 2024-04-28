@@ -30,6 +30,8 @@ void UCustomMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovem
 		bOrientRotationToMovement = true;
 		CharacterOwner->GetCapsuleComponent()->SetCapsuleHalfHeight(96.f);
 
+		// TODO:もしのぼりが終わった時に、姿勢のバグが発生するならローテーションを戻す処理を入れる
+
 		StopMovementImmediately();
 	}
 
@@ -191,6 +193,11 @@ void UCustomMovementComponent::PhysClimb(float deltaTime, int32 Iterations)
 	TraceClimbableSurfaces();
 	ProcessClimbableSurfaceInfo();
 
+	if (CheckShouldStopClimbing())
+	{
+		StopClimbing();
+	}
+
 	RestorePreAdditiveRootMotionVelocity();
 
 	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
@@ -204,7 +211,7 @@ void UCustomMovementComponent::PhysClimb(float deltaTime, int32 Iterations)
 	const FVector Adjusted = Velocity * deltaTime;
 	FHitResult Hit(1.f);
 
-	SafeMoveUpdatedComponent(Adjusted, UpdatedComponent->GetComponentQuat(), true, Hit);
+	SafeMoveUpdatedComponent(Adjusted, GetClimbRotation(deltaTime), true, Hit);
 
 	if (Hit.Time < 1.f)
 	{
@@ -217,6 +224,8 @@ void UCustomMovementComponent::PhysClimb(float deltaTime, int32 Iterations)
 	{
 		Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation) / deltaTime;
 	}
+
+	SnapMovementToClimbableSurfaces(deltaTime);
 }
 
 void UCustomMovementComponent::ProcessClimbableSurfaceInfo()
@@ -240,9 +249,48 @@ void UCustomMovementComponent::ProcessClimbableSurfaceInfo()
 	//Debug::Print(FString::Printf(TEXT("ClimbableSurfacesTracedResults.Num() = %d"), ClimbableSurfacesTracedResults.Num()), FColor::Blue, 3);
 }
 
+bool UCustomMovementComponent::CheckShouldStopClimbing()
+{
+	if (ClimbableSurfacesTracedResults.IsEmpty()) return true;
+
+	const float DotResult = FVector::DotProduct(CurrentClimbableSurfaceNormal, FVector::UpVector);
+	const float DegreeDiff = FMath::RadiansToDegrees(FMath::Acos(DotResult));
+
+	if (DegreeDiff <= 60.f)
+	{
+		return true;
+	}
+
+	Debug::Print(TEXT("Degree Diff; ") + FString::SanitizeFloat(DegreeDiff), FColor::Cyan, 1);
+	return false;
+}
+
 FQuat UCustomMovementComponent::GetClimbRotation(float DeltaTime)
 {
-	return FQuat();
+	const FQuat CurrentQuat = UpdatedComponent->GetComponentQuat();
+
+	if (HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocity())
+	{
+		return CurrentQuat;
+	}
+
+	const FQuat TargetQuat = FRotationMatrix::MakeFromX(-CurrentClimbableSurfaceNormal).ToQuat();
+	return FMath::QInterpTo(CurrentQuat, TargetQuat, DeltaTime, 5.f);
+}
+
+void UCustomMovementComponent::SnapMovementToClimbableSurfaces(float DeltaTime)
+{
+	const FVector ComponentForward = UpdatedComponent->GetForwardVector();
+	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
+
+	const FVector ProjectedCharacterToSurface = (CurrentClimbableSurfaceLocation - ComponentLocation).ProjectOnTo(ComponentForward);
+
+	const FVector SnapVector = -CurrentClimbableSurfaceNormal * ProjectedCharacterToSurface.Length();
+
+	UpdatedComponent->MoveComponent(
+		SnapVector * DeltaTime * MaxClimbSpeed,
+		UpdatedComponent->GetComponentQuat(),
+		true);
 }
 
 bool UCustomMovementComponent::IsClimbing() const
