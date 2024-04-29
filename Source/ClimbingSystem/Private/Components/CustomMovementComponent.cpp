@@ -150,12 +150,7 @@ void UCustomMovementComponent::ToggleClimbing(bool bEnableClimb)
 	{
 		if (CanStartClimbing())
 		{
-			Debug::Print(TEXT("Can start climbing"));
 			StartClimbing();
-		}
-		else
-		{
-			Debug::Print(TEXT("Can Not start climbing"));
 		}
 	}
 	else
@@ -261,7 +256,6 @@ bool UCustomMovementComponent::CheckShouldStopClimbing()
 		return true;
 	}
 
-	Debug::Print(TEXT("Degree Diff; ") + FString::SanitizeFloat(DegreeDiff), FColor::Cyan, 1);
 	return false;
 }
 
